@@ -1,6 +1,8 @@
 extends Node
 ## Bestiario original con mecánicas inspiradas en el SRD 3.5 (elementales y cultistas).
 ## Contenido de ambientación propio - no reproduce texto ni mapas de módulos con copyright.
+## Cada entrada incluye una tabla de botín ("loot_table") con probabilidad de caída
+## por objeto, además del oro y la experiencia otorgados al derrotarlo.
 class_name MonsterDB
 
 const MONSTERS := {
@@ -14,6 +16,10 @@ const MONSTERS := {
 		"fort": 3, "ref": 0, "will": 1,
 		"xp_reward": 50,
 		"loot_gold": "1d10",
+		"loot_table": [
+			{"item_id": "daga", "source": "mundane", "chance": 0.25},
+			{"item_id": "pocion_curacion_leve", "source": "mundane", "chance": 0.2},
+		],
 	},
 	"guardian_agua": {
 		"name": "Guardián de las Mareas",
@@ -25,6 +31,10 @@ const MONSTERS := {
 		"fort": 4, "ref": 1, "will": 1,
 		"xp_reward": 75,
 		"loot_gold": "2d10",
+		"loot_table": [
+			{"item_id": "cota_cuero", "source": "mundane", "chance": 0.2},
+			{"item_id": "pocion_curacion_leve", "source": "mundane", "chance": 0.25},
+		],
 	},
 	"acolito_aire": {
 		"name": "Acólito del Vendaval",
@@ -36,6 +46,10 @@ const MONSTERS := {
 		"fort": 2, "ref": 3, "will": 2,
 		"xp_reward": 50,
 		"loot_gold": "1d10",
+		"loot_table": [
+			{"item_id": "arco_corto", "source": "mundane", "chance": 0.15},
+			{"item_id": "pocion_curacion_leve", "source": "mundane", "chance": 0.2},
+		],
 	},
 	"centinela_tierra": {
 		"name": "Centinela de Granito",
@@ -47,6 +61,10 @@ const MONSTERS := {
 		"fort": 6, "ref": 0, "will": 1,
 		"xp_reward": 100,
 		"loot_gold": "2d12",
+		"loot_table": [
+			{"item_id": "escudo_grande", "source": "mundane", "chance": 0.2},
+			{"item_id": "anillo_resistencia_1", "source": "magic", "chance": 0.05},
+		],
 	},
 	"elemental_fuego_menor": {
 		"name": "Elemental de Fuego Menor",
@@ -59,6 +77,9 @@ const MONSTERS := {
 		"fort": 3, "ref": 4, "will": 1,
 		"xp_reward": 90,
 		"loot_gold": "0",
+		"loot_table": [
+			{"item_id": "pergamino_bola_de_fuego", "source": "magic", "chance": 0.1},
+		],
 	},
 	"elemental_agua_menor": {
 		"name": "Elemental de Agua Menor",
@@ -70,6 +91,9 @@ const MONSTERS := {
 		"fort": 3, "ref": 4, "will": 1,
 		"xp_reward": 90,
 		"loot_gold": "0",
+		"loot_table": [
+			{"item_id": "pergamino_curacion", "source": "magic", "chance": 0.1},
+		],
 	},
 	"elemental_aire_menor": {
 		"name": "Elemental de Aire Menor",
@@ -81,6 +105,9 @@ const MONSTERS := {
 		"fort": 3, "ref": 6, "will": 1,
 		"xp_reward": 90,
 		"loot_gold": "0",
+		"loot_table": [
+			{"item_id": "anillo_proteccion_1", "source": "magic", "chance": 0.05},
+		],
 	},
 	"elemental_tierra_menor": {
 		"name": "Elemental de Tierra Menor",
@@ -92,6 +119,9 @@ const MONSTERS := {
 		"fort": 5, "ref": 0, "will": 1,
 		"xp_reward": 90,
 		"loot_gold": "0",
+		"loot_table": [
+			{"item_id": "amuleto_de_la_vitalidad", "source": "magic", "chance": 0.05},
+		],
 	},
 	"sumo_sacerdote_elemental": {
 		"name": "Sumo Sacerdote del Nexo Elemental",
@@ -105,6 +135,10 @@ const MONSTERS := {
 		"xp_reward": 400,
 		"loot_gold": "5d20",
 		"is_boss": true,
+		"loot_table": [
+			{"item_id": "espada_larga_mas_3_llameante", "source": "magic", "chance": 1.0},
+			{"item_id": "tocado_del_sabio", "source": "magic", "chance": 0.5},
+		],
 	},
 }
 
@@ -128,7 +162,7 @@ static func instantiate(id: String) -> Character:
 	c.base_armor_bonus = data["armor_class"] - 10 - c.abilities.dex_mod()
 	c.inventory = Inventory.new()
 	c.inventory.add_gold(Dice.roll_expression(data.get("loot_gold", "0")))
-	c.equipment["weapon"] = {"name": "ataque natural", "damage": data["damage"]}
+	c.equipment["weapon"] = {"name": "ataque natural", "damage": data["damage"], "hands": "melee"}
 	c.set_meta("monster_id", id)
 	c.set_meta("attack_bonus_override", data["attack_bonus"])
 	c.set_meta("fort_override", data["fort"])
@@ -138,3 +172,19 @@ static func instantiate(id: String) -> Character:
 	c.set_meta("element", data.get("element", "ninguno"))
 	c.set_meta("is_boss", data.get("is_boss", false))
 	return c
+
+
+## Tira la tabla de botín de un monstruo y devuelve los objetos obtenidos como
+## [{"name":String, "item_id":String, "source":"mundane"|"magic"}, ...]
+static func roll_loot(id: String) -> Array:
+	var data := get_monster(id)
+	var drops: Array = []
+	for entry in data.get("loot_table", []):
+		if randf() <= entry["chance"]:
+			var item_name: String
+			if entry["source"] == "magic":
+				item_name = MagicItemDB.get_item(entry["item_id"]).get("name", entry["item_id"])
+			else:
+				item_name = ItemDB.get_item(entry["item_id"]).get("name", entry["item_id"])
+			drops.append({"name": item_name, "item_id": entry["item_id"], "source": entry["source"]})
+	return drops

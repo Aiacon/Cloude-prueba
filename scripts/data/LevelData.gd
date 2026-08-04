@@ -14,10 +14,23 @@ const ROOMS := {
 			{"pos": {"x": 6, "y": 10}, "target_room": "ala_tierra", "target_pos": {"x": 4, "y": 1}},
 			{"pos": {"x": 0, "y": 5}, "target_room": "ala_agua", "target_pos": {"x": 7, "y": 3}},
 			{"pos": {"x": 12, "y": 5}, "target_room": "ala_fuego", "target_pos": {"x": 1, "y": 3}},
+			{"pos": {"x": 2, "y": 10}, "target_room": "pueblo_plaza", "target_pos": {"x": 7, "y": 7}},
 		],
 		"portals": [
 			{"pos": {"x": 6, "y": 3}, "target_room": "camara_final", "target_pos": {"x": 4, "y": 7}, "required_keys": 4},
 		],
+		"encounters": [],
+		"pickups": [],
+	},
+	"pueblo_plaza": {
+		"name": "Plaza del Pueblo",
+		"width": 15, "height": 9,
+		"element": "pueblo",
+		"start_pos": {"x": 7, "y": 4},
+		"doors": [
+			{"pos": {"x": 7, "y": 8}, "target_room": "entrada", "target_pos": {"x": 2, "y": 9}},
+		],
+		"portals": [],
 		"encounters": [],
 		"pickups": [],
 	},

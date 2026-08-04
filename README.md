@@ -4,7 +4,7 @@ RPG retro por turnos para Android, inspirado en **D&D 3.5** (reglas basadas en
 el SRD/OGL de libre uso) y ambientado en un templo dedicado a los cuatro
 elementos. Proyecto **personal / no comercial** — no reutiliza texto, mapas ni
 arte de ningún módulo con copyright; la ambientación (nombres de salas,
-enemigos, trama) es original.
+NPC, enemigos, trama) es original.
 
 Construido con **[Godot 4.3+](https://godotengine.org/)**, con gráficos
 retro generados por código (bloques de color, sin dependencias de arte
@@ -13,34 +13,67 @@ externo) y pensado para exportarse a Android en **arquitectura de 32 bits
 
 ## Características implementadas
 
-- **Motor de reglas D&D 3.5 simplificado**: características (FUE/DES/CON/
-  INT/SAB/CAR), modificadores, Bonificador Base de Ataque, salvaciones
-  (Fortaleza/Reflejos/Voluntad), Clase de Armadura, tiradas de dados
-  (`XdY+Z`), ataques críticos y ataque furtivo del pícaro.
-- **4 razas** (Humano, Elfo, Enano, Mediano) y **4 clases** (Guerrero,
-  Clérigo, Mago, Pícaro) con progresiones de BAB/salvaciones fieles al SRD.
+- **Motor de reglas D&D 3.5**: características (FUE/DES/CON/INT/SAB/CAR),
+  modificadores, Bonificador Base de Ataque, salvaciones (Fortaleza/Reflejos/
+  Voluntad), Clase de Armadura, tiradas de dados (`XdY+Z`), ataques
+  críticos y ataque furtivo del pícaro — **todas las tiradas se muestran
+  desglosadas** en el registro de combate (`d20(14)+6 = 20 vs CA 17`).
+- **Progresión de nivel 1 a 30** (incluye rango épico 21-30): tabla de XP
+  acumulada oficial, dotes cada 3 niveles (+ dotes de bonificación de
+  Guerrero), incremento de característica cada 4 niveles.
+- **7 razas núcleo** del Manual del Jugador (Humano, Elfo, Enano, Mediano,
+  Semielfo, Semiorco, Gnomo) y **6 clases** (Guerrero, Clérigo, Mago,
+  Pícaro, Explorador, Paladín).
+- **~30 dotes** con prerrequisitos, asignadas automáticamente al subir de
+  nivel según la clase.
+- **Sistema de conjuros** (Clérigo/Mago/Paladín/Explorador) con conjuros de
+  nivel 0 a 9 y progresión de nivel de conjurador fiel al SRD; sistema de
+  "usos de conjuro" diarios simplificado (ver nota abajo).
+- **Equipo mágico**: armas y armaduras +1/+2/+3, anillos, objetos
+  maravillosos, varitas y pergaminos.
 - **Creación de personaje** con tirada de atributos (4d6, se descarta el
-  menor) y grupo de hasta 4 aventureros (héroe + compañeros).
-- **Exploración por rejilla** estilo RPG clásico, con las 4 alas elementales
-  (Fuego, Agua, Aire, Tierra) conectadas a un vestíbulo central, y una
-  cámara final que requiere las 4 llaves elementales.
-- **Combate por turnos** con iniciativa (d20 + DES), selección de objetivo,
-  uso de pociones, huida y experiencia/nivel al vencer.
+  menor) y **grupo de 1 a 6 aventureros** (héroe + compañeros de las 6
+  clases disponibles).
+- **NPC con misiones**: una historia principal de 6 capítulos concatenados
+  a través de las 4 alas del templo (dada por el Hermano Ismael) más una
+  misión secundaria opcional, con diálogos y recompensas.
+- **Pueblo (hub)** inicial con NPC, conectado al Templo Elemental (vestíbulo
+  + 4 alas elementales + cámara final).
+- **Combate por turnos** con iniciativa (d20 + DES), ataque, conjuros,
+  pociones y huida.
+- **Recompensas por enemigo**: XP, oro y tabla de botín con probabilidad de
+  caída por objeto (incluye objetos mágicos).
 - **Guardado/carga** de partida en JSON (`user://`), compatible con Android.
+- Todos los textos en **español latinoamericano** neutro.
+
+## Simplificaciones deliberadas (para mantener el proyecto jugable y verificable)
+
+- **Conjuros**: en vez de espacios independientes por nivel de conjuro (regla
+  completa del SRD), cada conjurador tiene un número de "usos de conjuro"
+  diarios que gasta en cualquier conjuro que conozca hasta su nivel máximo.
+  Se descansa con el botón **Descansar** (recupera PG y usos de conjuro).
+- **Dotes/conjuros/objetos mágicos**: se implementó un conjunto amplio y
+  representativo del SRD (no las ~1000+ entradas completas), sobre una
+  arquitectura de datos (`FeatDB`, `SpellDB`, `MagicItemDB`) pensada para
+  ampliarse fácilmente.
+- **Sin pantalla de inventario/equipo manual todavía**: las pociones se usan
+  automáticamente desde el combate y el equipo mágico obtenido como botín se
+  autoequipa en el líder del grupo.
 
 ## Estructura del proyecto
 
 ```
 project.godot
-autoload/            GameManager (estado global), EventBus (señales)
-scripts/rules/        Motor de reglas D&D 3.5 (Dice, AbilityScores, RaceDB,
-                       ClassDB, SkillDB, Character, CombatEngine)
-scripts/data/          Contenido: MonsterDB, ItemDB, LevelData (mapas)
-scripts/systems/       Inventory, SaveSystem
-scripts/world/         DungeonBuilder (mapa retro por bloques), Player
-scripts/scenes/        Lógica de cada escena jugable
-scenes/                 MainMenu, CharacterCreation, Dungeon, Combat (.tscn)
-export_presets.cfg     Preset de exportación Android (32-bit / armeabi-v7a)
+autoload/              GameManager (estado global), EventBus (señales)
+scripts/rules/          Motor de reglas: Dice, AbilityScores, RaceDB, ClassDB,
+                         SkillDB, FeatDB, ProgressionDB, Character, CombatEngine
+scripts/data/            Contenido: MonsterDB, ItemDB, MagicItemDB, SpellDB,
+                         NpcDB, QuestDB, LevelData (mapas)
+scripts/systems/         Inventory, SaveSystem
+scripts/world/           DungeonBuilder (mapa retro por bloques + NPC), Player
+scripts/scenes/          Lógica de cada escena jugable
+scenes/                  MainMenu, CharacterCreation, Dungeon, Combat (.tscn)
+export_presets.cfg       Preset de exportación Android (32-bit / armeabi-v7a)
 ```
 
 ## Cómo abrir y probar el proyecto
@@ -50,6 +83,10 @@ export_presets.cfg     Preset de exportación Android (32-bit / armeabi-v7a)
    (`project.godot`).
 3. Pulsa ▶ (F5) para jugar. Los controles de teclado (flechas) funcionan
    para probar en escritorio; en Android se usa el D-pad táctil en pantalla.
+4. Flujo recomendado: Nueva Partida → crea tu héroe y elige tamaño de grupo
+   → hablas con el Alcalde en la Plaza del Pueblo (misión inicial) → entras
+   al Templo Elemental → hablas con el Hermano Ismael para las siguientes
+   misiones de la cadena principal.
 
 ## Cómo exportar el APK (32-bit) a Android
 
@@ -69,13 +106,13 @@ Este proyecto usa **mecánicas de juego tipo d20** equivalentes a las
 publicadas bajo la *Open Game License* (SRD 3.5), que son de uso libre.
 **No** incluye texto, mapas, arte ni contenido narrativo protegido de ningún
 módulo comercial (como *Temple of Elemental Evil*, propiedad de Wizards of
-the Coast) — la ambientación, nombres propios y diseño de niveles de este
-repositorio son originales. Uso personal y no comercial.
+the Coast) — la ambientación, nombres propios, NPC, misiones y diseño de
+niveles de este repositorio son originales. Uso personal y no comercial.
 
 ## Próximos pasos sugeridos
 
-- Sistema de conjuros para Clérigo/Mago (actualmente solo tienen daño
-  cuerpo a cuerpo).
-- Más dotes, objetos mágicos y una tienda en el vestíbulo.
+- Pantalla de inventario/equipo manual (elegir qué arma/armadura/anillo
+  llevar puesto, usar varitas y pergaminos desde combate).
+- Más dotes, conjuros y objetos mágicos (la arquitectura ya lo soporta).
 - Arte pixel-art real (actualmente son bloques de color como placeholder).
 - Sonidos y música retro (chiptune).

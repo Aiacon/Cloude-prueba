@@ -15,6 +15,7 @@ static func save_game() -> bool:
 		"cleared_encounters": GameManager.cleared_encounters,
 		"collected_pickups": GameManager.collected_pickups,
 		"keys_collected": GameManager.keys_collected,
+		"quest_states": GameManager.quest_states,
 	}
 	var file := FileAccess.open(SAVE_PATH, FileAccess.WRITE)
 	if file == null:
@@ -55,6 +56,7 @@ static func load_game() -> bool:
 	GameManager.cleared_encounters = data.get("cleared_encounters", {})
 	GameManager.collected_pickups = data.get("collected_pickups", {})
 	GameManager.keys_collected = data.get("keys_collected", 0)
+	GameManager.quest_states = data.get("quest_states", {})
 	return true
 
 

@@ -11,6 +11,7 @@ const COLOR_DOOR := Color(0.55, 0.42, 0.2)
 const COLOR_PORTAL := Color(0.75, 0.2, 0.85)
 const COLOR_ENCOUNTER := Color(0.7, 0.15, 0.15)
 const COLOR_PICKUP := Color(0.95, 0.85, 0.2)
+const COLOR_NPC := Color(0.3, 0.75, 0.9)
 
 const ELEMENT_TINTS := {
 	"fuego": Color(0.35, 0.12, 0.08),
@@ -19,6 +20,7 @@ const ELEMENT_TINTS := {
 	"tierra": Color(0.22, 0.18, 0.08),
 	"todos": Color(0.25, 0.1, 0.3),
 	"ninguno": COLOR_FLOOR,
+	"pueblo": Color(0.16, 0.28, 0.14),
 }
 
 var room_id: String = ""
@@ -28,6 +30,7 @@ var doors_by_pos: Dictionary = {}   # Vector2i -> door dict
 var portals_by_pos: Dictionary = {}
 var encounters_by_pos: Dictionary = {}
 var pickups_by_pos: Dictionary = {}
+var npcs_by_pos: Dictionary = {}
 
 @onready var tiles_container: Node2D = Node2D.new()
 
@@ -49,12 +52,14 @@ func load_room(target_room_id: String, spawn_pos: Vector2i) -> Vector2i:
 	portals_by_pos.clear()
 	encounters_by_pos.clear()
 	pickups_by_pos.clear()
+	npcs_by_pos.clear()
 
 	_build_grid()
 	_build_doors()
 	_build_portals()
 	_build_encounters()
 	_build_pickups()
+	_build_npcs()
 
 	return spawn_pos
 
@@ -135,5 +140,24 @@ func _build_pickups() -> void:
 		pickups_by_pos[pos] = pickup
 
 
+## Los NPC ocupan una casilla sólida (no se puede caminar sobre ellos, se les habla
+## desde una casilla adyacente).
+func _build_npcs() -> void:
+	for npc in NpcDB.npcs_in_room(room_id):
+		var pos: Vector2i = npc["pos"]
+		_place_tile(pos, COLOR_NPC)
+		walkable.erase(pos)
+		npcs_by_pos[pos] = npc
+
+
 func is_walkable(pos: Vector2i) -> bool:
 	return walkable.has(pos)
+
+
+## Devuelve el NPC adyacente (arriba/abajo/izquierda/derecha) a "pos", o un diccionario
+## vacío si no hay ninguno.
+func adjacent_npc(pos: Vector2i) -> Dictionary:
+	for dir in [Vector2i.UP, Vector2i.DOWN, Vector2i.LEFT, Vector2i.RIGHT]:
+		if npcs_by_pos.has(pos + dir):
+			return npcs_by_pos[pos + dir]
+	return {}

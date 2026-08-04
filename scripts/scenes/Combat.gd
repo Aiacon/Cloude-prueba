@@ -1,6 +1,7 @@
 extends Node2D
-## Combate por turnos: iniciativa (d20+DES), acciones de ataque/objeto/huida,
-## resolución de ataques y salvaciones según el motor de reglas D&D 3.5.
+## Combate por turnos: iniciativa (d20+DES), acciones de ataque/conjuro/objeto/huida,
+## con el desglose de cada tirada visible en el registro y recompensas detalladas
+## (oro, XP y objetos) por cada enemigo derrotado.
 
 var party_alive: Array = []
 var enemies: Array = []
@@ -12,15 +13,19 @@ var encounter_id: String = ""
 var return_pos: Vector2i
 
 var log_lines: Array = []
-const MAX_LOG_LINES := 8
+const MAX_LOG_LINES := 9
 
 var log_label: RichTextLabel
 var enemy_status_label: Label
 var party_status_label: Label
 var action_panel: VBoxContainer
 var target_panel: VBoxContainer
+var spell_panel: VBoxContainer
+var spell_scroll: ScrollContainer
 var end_panel: VBoxContainer
 var end_label: Label
+
+var spell_action_btn: Button
 
 
 func _ready() -> void:
@@ -30,6 +35,10 @@ func _ready() -> void:
 	return_pos = GameManager.player_return_pos
 
 	party_alive = GameManager.party.filter(func(c): return c.current_hp > 0)
+	for member in party_alive:
+		member.temp_ac_bonus = 0
+		member.temp_attack_bonus = 0
+
 	enemies = []
 	for monster_id in pending.get("monster_ids", []):
 		var enemy := MonsterDB.instantiate(monster_id)
@@ -41,7 +50,9 @@ func _ready() -> void:
 
 	_build_ui()
 	EventBus.encounter_started.emit(enemies)
-	_log("¡Comienza el combate!")
+	_log("¡Comienza el combate! Orden de iniciativa:")
+	for entry in initiative_order:
+		_log("  %s: %s" % [entry["combatant"].character_name, entry["breakdown"]])
 	_process_turn()
 
 
@@ -55,20 +66,20 @@ func _build_ui() -> void:
 	add_child(ui)
 
 	enemy_status_label = Label.new()
-	enemy_status_label.position = Vector2(8, 8)
+	enemy_status_label.position = Vector2(8, 4)
 	enemy_status_label.autowrap_mode = TextServer.AUTOWRAP_WORD
 	enemy_status_label.custom_minimum_size = Vector2(368, 0)
 	ui.add_child(enemy_status_label)
 
 	party_status_label = Label.new()
-	party_status_label.position = Vector2(8, 60)
+	party_status_label.position = Vector2(8, 44)
 	party_status_label.autowrap_mode = TextServer.AUTOWRAP_WORD
 	party_status_label.custom_minimum_size = Vector2(368, 0)
 	ui.add_child(party_status_label)
 
 	log_label = RichTextLabel.new()
-	log_label.position = Vector2(8, 96)
-	log_label.size = Vector2(368, 60)
+	log_label.position = Vector2(8, 84)
+	log_label.size = Vector2(368, 66)
 	log_label.bbcode_enabled = false
 	log_label.scroll_active = false
 	ui.add_child(log_label)
@@ -79,14 +90,24 @@ func _build_ui() -> void:
 	_build_action_buttons()
 
 	target_panel = VBoxContainer.new()
-	target_panel.position = Vector2(140, 160)
+	target_panel.position = Vector2(120, 160)
 	ui.add_child(target_panel)
+
+	spell_scroll = ScrollContainer.new()
+	spell_scroll.position = Vector2(120, 160)
+	spell_scroll.custom_minimum_size = Vector2(210, 52)
+	spell_scroll.visible = false
+	ui.add_child(spell_scroll)
+	spell_panel = VBoxContainer.new()
+	spell_scroll.add_child(spell_panel)
 
 	end_panel = VBoxContainer.new()
 	end_panel.position = Vector2(90, 160)
 	end_panel.visible = false
 	ui.add_child(end_panel)
 	end_label = Label.new()
+	end_label.autowrap_mode = TextServer.AUTOWRAP_WORD
+	end_label.custom_minimum_size = Vector2(220, 0)
 	end_panel.add_child(end_label)
 	var continue_btn := Button.new()
 	continue_btn.text = "Continuar"
@@ -101,6 +122,11 @@ func _build_action_buttons() -> void:
 	attack_btn.text = "Atacar"
 	attack_btn.pressed.connect(_on_attack_pressed)
 	action_panel.add_child(attack_btn)
+
+	spell_action_btn = Button.new()
+	spell_action_btn.text = "Conjuro"
+	spell_action_btn.pressed.connect(_on_spell_menu_pressed)
+	action_panel.add_child(spell_action_btn)
 
 	var item_btn := Button.new()
 	item_btn.text = "Poción"
@@ -162,7 +188,10 @@ func _process_turn() -> void:
 
 	action_panel.visible = false
 	target_panel.visible = false
+	spell_scroll.visible = false
 	for child in target_panel.get_children():
+		child.queue_free()
+	for child in spell_panel.get_children():
 		child.queue_free()
 
 	if enemies.has(combatant):
@@ -170,7 +199,15 @@ func _process_turn() -> void:
 	else:
 		current_actor = combatant
 		_log("Turno de %s." % combatant.character_name)
+		spell_action_btn.visible = combatant.is_spellcaster() and combatant.spells_remaining() > 0
 		action_panel.visible = true
+
+
+func _attack_bonus_for(actor) -> int:
+	var weapon = actor.equipment.get("weapon")
+	if weapon != null and weapon.get("hands", "melee") == "ranged":
+		return actor.ranged_attack_bonus()
+	return actor.melee_attack_bonus()
 
 
 func _enemy_attack(attacker) -> void:
@@ -180,15 +217,16 @@ func _enemy_attack(attacker) -> void:
 		return
 	var target = alive_targets[randi() % alive_targets.size()]
 	var result := CombatEngine.resolve_attack(
-		attacker.melee_attack_bonus(), target.armor_class(),
+		_attack_bonus_for(attacker), target.armor_class(),
 		attacker.weapon_damage_expression(), attacker.melee_damage_bonus()
 	)
+	_log("%s ataca a %s: %s" % [attacker.character_name, target.character_name, result.breakdown])
 	if result.hit:
 		target.take_damage(result.damage)
 		var crit_text := " ¡CRÍTICO!" if result.critical else ""
-		_log("%s golpea a %s por %d daño.%s" % [attacker.character_name, target.character_name, result.damage, crit_text])
+		_log("  ¡Impacto! %d de daño.%s" % [result.damage, crit_text])
 	else:
-		_log("%s falla el ataque contra %s." % [attacker.character_name, target.character_name])
+		_log("  Falla el ataque.")
 	_refresh_hud()
 	_end_turn()
 
@@ -207,21 +245,22 @@ func _on_attack_pressed() -> void:
 
 func _on_target_selected(target) -> void:
 	var result := CombatEngine.resolve_attack(
-		current_actor.melee_attack_bonus(), target.armor_class(),
+		_attack_bonus_for(current_actor), target.armor_class(),
 		current_actor.weapon_damage_expression(), current_actor.melee_damage_bonus()
 	)
+	_log("%s ataca a %s: %s" % [current_actor.character_name, target.character_name, result.breakdown])
 	if result.hit:
-		var bonus_dice := current_actor.sneak_attack_dice()
+		var sneak_dice := current_actor.sneak_attack_dice()
 		var extra := 0
-		if bonus_dice > 0:
-			extra = Dice.roll_multiple(bonus_dice, 6)
+		if sneak_dice > 0:
+			extra = Dice.roll_multiple(sneak_dice, 6) + current_actor.sneak_attack_flat_bonus()
 		var total_damage: int = result.damage + extra
 		target.take_damage(total_damage)
 		var crit_text := " ¡CRÍTICO!" if result.critical else ""
 		var sneak_text := (" (+%d furtivo)" % extra) if extra > 0 else ""
-		_log("%s golpea a %s por %d daño.%s%s" % [current_actor.character_name, target.character_name, total_damage, crit_text, sneak_text])
+		_log("  ¡Impacto! %d de daño.%s%s" % [total_damage, crit_text, sneak_text])
 	else:
-		_log("%s falla el ataque contra %s." % [current_actor.character_name, target.character_name])
+		_log("  Falla el ataque.")
 	_refresh_hud()
 	target_panel.visible = false
 	_end_turn()
@@ -240,13 +279,109 @@ func _on_item_pressed() -> void:
 	_end_turn()
 
 
+## --- Conjuros ---
+
+func _on_spell_menu_pressed() -> void:
+	action_panel.visible = false
+	spell_scroll.visible = true
+	for spell_id in current_actor.known_spells():
+		var spell := SpellDB.get_spell(spell_id)
+		var btn := Button.new()
+		btn.text = "Nv%d %s" % [spell["level"], spell["name"]]
+		btn.pressed.connect(func(): _on_spell_selected(spell_id))
+		spell_panel.add_child(btn)
+	if spell_panel.get_child_count() == 0:
+		var lbl := Label.new()
+		lbl.text = "No conoces conjuros todavía."
+		spell_panel.add_child(lbl)
+
+
+func _on_spell_selected(spell_id: String) -> void:
+	var spell := SpellDB.get_spell(spell_id)
+	spell_scroll.visible = false
+
+	match spell["target"]:
+		"self":
+			_cast_spell(spell_id, [current_actor])
+		"ally":
+			target_panel.visible = true
+			for p in GameManager.party:
+				if p.current_hp <= 0:
+					continue
+				var btn := Button.new()
+				btn.text = "%s (%d/%d PG)" % [p.character_name, p.current_hp, p.max_hp]
+				btn.pressed.connect(func(): _cast_spell(spell_id, [p]))
+				target_panel.add_child(btn)
+		"enemy":
+			target_panel.visible = true
+			for e in enemies:
+				if e.current_hp <= 0:
+					continue
+				var btn := Button.new()
+				btn.text = "%s (%d/%d PG)" % [e.character_name, e.current_hp, e.max_hp]
+				btn.pressed.connect(func(): _cast_spell(spell_id, [e]))
+				target_panel.add_child(btn)
+		"all_enemies":
+			_cast_spell(spell_id, enemies.filter(func(e): return e.current_hp > 0))
+
+
+func _cast_spell(spell_id: String, targets: Array) -> void:
+	if not current_actor.spend_spell_use():
+		_log("%s ya no tiene usos de conjuro disponibles hoy." % current_actor.character_name)
+		return
+	var spell := SpellDB.get_spell(spell_id)
+	var dc := current_actor.spell_save_dc(spell["level"])
+	_log("%s lanza %s." % [current_actor.character_name, spell["name"]])
+
+	for target in targets:
+		match spell["effect"]:
+			"damage":
+				_resolve_spell_damage(spell, target, dc)
+			"heal":
+				var healed: int = max(1, Dice.roll_expression(spell["expression"]) + current_actor.heal_bonus())
+				target.heal(healed)
+				_log("  %s recupera %d PG." % [target.character_name, healed])
+			"buff_ac":
+				var bonus: int = int(spell["expression"])
+				target.temp_ac_bonus += bonus
+				_log("  %s gana +%d a la CA." % [target.character_name, bonus])
+			"buff_attack":
+				var bonus2: int = int(spell["expression"])
+				target.temp_attack_bonus += bonus2
+				_log("  %s gana +%d a los ataques." % [target.character_name, bonus2])
+			"debuff_ac":
+				var penalty: int = int(spell["expression"])
+				target.temp_ac_bonus -= penalty
+				_log("  %s sufre -%d a la CA." % [target.character_name, penalty])
+
+	target_panel.visible = false
+	_refresh_hud()
+	_end_turn()
+
+
+func _resolve_spell_damage(spell: Dictionary, target, dc: int) -> void:
+	var dmg: int = max(1, Dice.roll_expression(spell["expression"]))
+	var save_type: String = spell.get("save", "none")
+	if save_type != "none":
+		var save_bonus: int = target.fortitude_save() if save_type == "fort" else (target.reflex_save() if save_type == "ref" else target.will_save())
+		var save_result := CombatEngine.resolve_save(save_bonus, dc)
+		_log("  %s salva (%s): %s" % [target.character_name, save_type.to_upper(), save_result.breakdown])
+		if save_result.success:
+			dmg = int(dmg / 2.0)
+			_log("  ¡Salvación superada! Daño reducido a la mitad.")
+	target.take_damage(dmg)
+	_log("  %s recibe %d de daño." % [target.character_name, dmg])
+
+
+## --- Huida ---
+
 func _on_flee_pressed() -> void:
 	var roll := Dice.d20() + current_actor.abilities.dex_mod()
 	if roll >= 11:
-		_log("¡%s logra huir del combate!" % current_actor.character_name)
+		_log("¡%s logra huir del combate! (d20 + DES = %d)" % [current_actor.character_name, roll])
 		_flee_combat()
 	else:
-		_log("%s intenta huir... ¡pero no lo consigue!" % current_actor.character_name)
+		_log("%s intenta huir... ¡pero no lo consigue! (d20 + DES = %d)" % [current_actor.character_name, roll])
 		_end_turn()
 
 
@@ -261,33 +396,53 @@ func _flee_combat() -> void:
 	GameManager.return_to_dungeon()
 
 
+## --- Fin de combate ---
+
 func _victory() -> void:
 	action_panel.visible = false
 	target_panel.visible = false
+	spell_scroll.visible = false
 
 	var total_xp := 0
 	var total_gold := 0
+	var loot_lines: Array = []
+	var leader: Character = GameManager.party[0]
+
 	for e in enemies:
-		total_xp += int(e.get_meta("xp_reward", 0))
-		total_gold += e.inventory.gold
+		var monster_id: String = e.get_meta("monster_id", "")
+		var xp: int = int(e.get_meta("xp_reward", 0))
+		var gold: int = e.inventory.gold
+		total_xp += xp
+		total_gold += gold
+		var drops := MonsterDB.roll_loot(monster_id)
+		for drop in drops:
+			if drop["source"] == "magic" and MagicItemDB.is_equippable(drop["item_id"]):
+				leader.equip_magic_item(drop["item_id"])
+				loot_lines.append("%s equipa: %s" % [leader.character_name, drop["name"]])
+			else:
+				leader.inventory.add_item(drop["item_id"], 1)
+				loot_lines.append("Botín: %s" % drop["name"])
 
 	if encounter_room_id != "" and encounter_id != "":
 		GameManager.cleared_encounters["%s:%s" % [encounter_room_id, encounter_id]] = true
 
-	var leader: Character = GameManager.party[0]
 	leader.inventory.add_gold(total_gold)
 
+	var level_up_lines: Array = []
 	for member in GameManager.party:
 		if member.current_hp <= 0:
 			continue
 		member.experience += total_xp
-		var xp_to_next := member.level * 1000
-		while member.experience >= xp_to_next:
-			member.experience -= xp_to_next
+		while member.level < ProgressionDB.MAX_LEVEL and member.experience >= ProgressionDB.xp_for_level(member.level + 1):
 			member.level_up()
-			xp_to_next = member.level * 1000
+			level_up_lines.append("%s alcanza el nivel %d." % [member.character_name, member.level])
 
-	end_label.text = "¡Victoria! +%d XP, +%d oro." % [total_xp, total_gold]
+	var victory_text := "¡Victoria! +%d XP, +%d oro." % [total_xp, total_gold]
+	for line in loot_lines:
+		victory_text += "\n" + line
+	for line in level_up_lines:
+		victory_text += "\n" + line
+	end_label.text = victory_text
 	GameManager.player_return_pos = return_pos
 	end_panel.visible = true
 
@@ -295,6 +450,7 @@ func _victory() -> void:
 func _defeat() -> void:
 	action_panel.visible = false
 	target_panel.visible = false
+	spell_scroll.visible = false
 	end_label.text = "El grupo ha caído en el Templo Elemental...\nCarga tu última partida guardada para continuar."
 	end_panel.visible = true
 

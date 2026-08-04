@@ -11,6 +11,12 @@ var party_status_label: Label
 var message_label: Label
 var message_timer: Timer
 
+var talk_btn: Button
+var nearby_npc: Dictionary = {}
+var dialogue_panel: PanelContainer
+var dialogue_label: Label
+var dialogue_buttons: VBoxContainer
+
 
 func _ready() -> void:
 	dungeon_builder = DungeonBuilder.new()
@@ -42,6 +48,7 @@ func _ready() -> void:
 	dungeon_builder.load_room(start_room, spawn)
 	player.place_at(spawn)
 	_refresh_hud()
+	_update_nearby_npc(spawn)
 
 	EventBus.game_message.connect(_show_message)
 
@@ -81,7 +88,40 @@ func _build_ui() -> void:
 	menu_btn.pressed.connect(_on_menu_pressed)
 	ui.add_child(menu_btn)
 
+	var rest_btn := Button.new()
+	rest_btn.text = "Descansar"
+	rest_btn.position = Vector2(300, 60)
+	rest_btn.pressed.connect(_on_rest_pressed)
+	ui.add_child(rest_btn)
+
+	talk_btn = Button.new()
+	talk_btn.text = "Hablar"
+	talk_btn.position = Vector2(300, 88)
+	talk_btn.visible = false
+	talk_btn.pressed.connect(_on_talk_pressed)
+	ui.add_child(talk_btn)
+
 	_build_dpad(ui)
+	_build_dialogue_panel(ui)
+
+
+func _build_dialogue_panel(ui: CanvasLayer) -> void:
+	dialogue_panel = PanelContainer.new()
+	dialogue_panel.position = Vector2(24, 40)
+	dialogue_panel.custom_minimum_size = Vector2(336, 130)
+	dialogue_panel.visible = false
+	ui.add_child(dialogue_panel)
+
+	var box := VBoxContainer.new()
+	dialogue_panel.add_child(box)
+
+	dialogue_label = Label.new()
+	dialogue_label.autowrap_mode = TextServer.AUTOWRAP_WORD
+	dialogue_label.custom_minimum_size = Vector2(320, 60)
+	box.add_child(dialogue_label)
+
+	dialogue_buttons = VBoxContainer.new()
+	box.add_child(dialogue_buttons)
 
 
 func _build_dpad(ui: CanvasLayer) -> void:
@@ -110,6 +150,8 @@ func _make_dpad_button(label: String, pos: Vector2, btn_size: Vector2, dir: Vect
 
 
 func _on_player_tile_entered(pos: Vector2i) -> void:
+	_update_nearby_npc(pos)
+
 	if dungeon_builder.doors_by_pos.has(pos):
 		var door: Dictionary = dungeon_builder.doors_by_pos[pos]
 		_transition_to(door["target_room"], _to_v2i(door["target_pos"]))
@@ -139,6 +181,7 @@ func _transition_to(target_room: String, target_pos: Vector2i) -> void:
 	player.dungeon = dungeon_builder
 	player.place_at(target_pos)
 	_refresh_hud()
+	_update_nearby_npc(target_pos)
 
 
 func _collect_pickup(pickup: Dictionary) -> void:
@@ -157,6 +200,7 @@ func _collect_pickup(pickup: Dictionary) -> void:
 	dungeon_builder.load_room(dungeon_builder.room_id, current_pos)
 	player.dungeon = dungeon_builder
 	player.place_at(current_pos)
+	_update_nearby_npc(current_pos)
 
 
 func _refresh_hud() -> void:
@@ -181,5 +225,75 @@ func _on_menu_pressed() -> void:
 	get_tree().change_scene_to_file(GameManager.SCENE_MAIN_MENU)
 
 
+func _on_rest_pressed() -> void:
+	GameManager.rest_party()
+	_refresh_hud()
+
+
 func _to_v2i(d: Dictionary) -> Vector2i:
 	return Vector2i(d.get("x", 0), d.get("y", 0))
+
+
+## --- NPC y diálogo ---
+
+func _update_nearby_npc(pos: Vector2i) -> void:
+	nearby_npc = dungeon_builder.adjacent_npc(pos)
+	talk_btn.visible = not nearby_npc.is_empty()
+
+
+func _npc_quest_id(npc: Dictionary) -> String:
+	if npc["id"] == "hermano_ismael":
+		return QuestDB.next_main_chain_quest()
+	return npc.get("quest_id", "")
+
+
+func _on_talk_pressed() -> void:
+	if nearby_npc.is_empty():
+		return
+	var npc := nearby_npc
+	var quest_id := _npc_quest_id(npc)
+
+	if quest_id == "":
+		_open_dialogue(npc["name"], npc["idle_lines"], [])
+		return
+
+	var quest := QuestDB.get_quest(quest_id)
+	var state := QuestDB.state(quest_id)
+
+	if state == "active":
+		if QuestDB.is_objective_met(quest_id):
+			GameManager.complete_quest(quest_id)
+			_refresh_hud()
+			_open_dialogue(npc["name"], quest["complete_text"], [])
+		else:
+			_open_dialogue(npc["name"], ["Misión activa: %s" % quest["name"], "Todavía no la has completado."], [])
+	elif state == "completed":
+		_open_dialogue(npc["name"], npc["idle_lines"], [])
+	else:
+		var accept_action := func():
+			GameManager.accept_quest(quest_id)
+			_close_dialogue()
+		var options := [{"label": "Aceptar: %s" % quest["name"], "action": accept_action}]
+		_open_dialogue(npc["name"], quest["offer_text"], options)
+
+
+func _open_dialogue(speaker: String, lines: Array, options: Array) -> void:
+	player.input_locked = true
+	dialogue_label.text = "%s:\n\n%s" % [speaker, "\n".join(lines)]
+	for child in dialogue_buttons.get_children():
+		child.queue_free()
+	for option in options:
+		var btn := Button.new()
+		btn.text = option["label"]
+		btn.pressed.connect(option["action"])
+		dialogue_buttons.add_child(btn)
+	var close_btn := Button.new()
+	close_btn.text = "Cerrar"
+	close_btn.pressed.connect(_close_dialogue)
+	dialogue_buttons.add_child(close_btn)
+	dialogue_panel.visible = true
+
+
+func _close_dialogue() -> void:
+	dialogue_panel.visible = false
+	player.input_locked = false

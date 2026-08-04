@@ -14,6 +14,7 @@ var move_elapsed: float = 0.0
 var start_pixel: Vector2 = Vector2.ZERO
 var target_pixel: Vector2 = Vector2.ZERO
 var pending_direction: Vector2i = Vector2i.ZERO
+var input_locked: bool = false   # true mientras hay un diálogo abierto
 
 var visual: ColorRect
 
@@ -37,6 +38,8 @@ func set_input_direction(dir: Vector2i) -> void:
 
 
 func _process(delta: float) -> void:
+	if input_locked:
+		return
 	if moving:
 		move_elapsed += delta
 		var t: float = clamp(move_elapsed / MOVE_DURATION, 0.0, 1.0)

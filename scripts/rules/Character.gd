@@ -13,10 +13,13 @@ var base_armor_bonus: int = 0   # de la armadura equipada
 var shield_bonus: int = 0
 var feats: Array = []
 var skill_ranks: Dictionary = {}   # skill_name -> ranks
-var equipment: Dictionary = {"weapon": null, "armor": null, "shield": null}
+var equipment: Dictionary = {"weapon": null, "armor": null, "shield": null, "ring": null, "amulet": null}
 var inventory: Inventory = null
 var is_alive: bool = true
 var experience: int = 0
+var spells_used_today: int = 0
+var temp_ac_bonus: int = 0       # bonificadores de conjuros de buff/debuff, solo duran el combate
+var temp_attack_bonus: int = 0
 
 
 static func create_new(name: String, race_id_: String, class_id_: String, abilities_: AbilityScores) -> Character:
@@ -31,7 +34,83 @@ static func create_new(name: String, race_id_: String, class_id_: String, abilit
 	c.inventory = Inventory.new()
 	c.roll_hit_points_for_level_up()
 	c.current_hp = c.max_hp
+	if race.get("bonus_feat", false):
+		c._grant_feat()
+	c._equip_starting_gear()
 	return c
+
+
+## Equipa el arma/armadura/escudo inicial típico de la clase.
+func _equip_starting_gear() -> void:
+	var data := class_data()
+	var weapon_id: String = data.get("starting_weapon", "")
+	if weapon_id != "":
+		equip_weapon(weapon_id)
+	var armor_id: String = data.get("starting_armor", "")
+	if armor_id != "":
+		equip_armor(armor_id)
+	var shield_id: String = data.get("starting_shield", "")
+	if shield_id != "":
+		equip_shield(shield_id)
+
+
+func equip_weapon(item_id: String) -> void:
+	var item := ItemDB.get_item(item_id)
+	if item.is_empty():
+		return
+	equipment["weapon"] = {"item_id": item_id, "name": item["name"], "damage": item["damage"], "hands": item["hands"]}
+
+
+func equip_armor(item_id: String) -> void:
+	var item := ItemDB.get_item(item_id)
+	if item.is_empty():
+		return
+	equipment["armor"] = {"item_id": item_id, "name": item["name"]}
+	base_armor_bonus = item.get("ac_bonus", 0)
+
+
+func equip_shield(item_id: String) -> void:
+	var item := ItemDB.get_item(item_id)
+	if item.is_empty():
+		return
+	equipment["shield"] = {"item_id": item_id, "name": item["name"]}
+	shield_bonus = item.get("ac_bonus", 0)
+
+
+## Equipa un objeto mágico (arma/armadura/escudo/anillo/objeto maravilloso) de MagicItemDB.
+func equip_magic_item(item_id: String) -> void:
+	var item := MagicItemDB.get_item(item_id)
+	if item.is_empty():
+		return
+	var slot: String
+	match item["type"]:
+		"weapon": slot = "weapon"
+		"armor": slot = "armor"
+		"shield": slot = "shield"
+		"ring": slot = "ring"
+		"wondrous": slot = "amulet"
+		_: return
+	var base_item: Dictionary = ItemDB.get_item(item.get("base_item", ""))
+	equipment[slot] = {
+		"item_id": item_id, "name": item["name"], "magic": true,
+		"damage": base_item.get("damage", "1d3"), "hands": base_item.get("hands", "melee"),
+	}
+	if slot == "armor":
+		base_armor_bonus = base_item.get("ac_bonus", 0)
+	elif slot == "shield":
+		shield_bonus = base_item.get("ac_bonus", 0)
+
+
+## Suma los bonificadores numéricos de todo el equipo mágico llevado puesto para "key".
+func magic_item_bonus(key: String) -> int:
+	var total := 0
+	for slot in ["weapon", "armor", "shield", "ring", "amulet"]:
+		var equipped = equipment.get(slot)
+		if equipped == null or not equipped.get("magic", false):
+			continue
+		var item_data := MagicItemDB.get_item(equipped.get("item_id", ""))
+		total += item_data.get("effect", {}).get(key, 0)
+	return total
 
 
 func class_data() -> Dictionary:
@@ -51,10 +130,98 @@ func roll_hit_points_for_level_up() -> void:
 	current_hp = max_hp
 
 
+## Sube de nivel: PG, dotes (generales y de bonificación de Guerrero cada N niveles),
+## incremento de característica cada 4 niveles y progresión de conjuros si corresponde.
 func level_up() -> void:
 	level += 1
 	roll_hit_points_for_level_up()
+
+	if ProgressionDB.grants_ability_increase(level):
+		_apply_ability_increase()
+
+	if ProgressionDB.grants_general_feat(level):
+		_grant_feat()
+	if class_id == "fighter" and ProgressionDB.grants_fighter_bonus_feat(level):
+		_grant_feat()
+
 	EventBus.party_member_leveled_up.emit(self)
+
+
+func _apply_ability_increase() -> void:
+	match ClassDB.primary_ability(class_id):
+		"str": abilities.strength += 1
+		"dex": abilities.dexterity += 1
+		"con": abilities.constitution += 1
+		"int": abilities.intelligence += 1
+		"wis": abilities.wisdom += 1
+		"cha": abilities.charisma += 1
+
+
+func _grant_feat() -> void:
+	var feat_id := FeatDB.pick_feat_for(self)
+	if feat_id == "":
+		return
+	feats.append(feat_id)
+	var hp_gain: int = FeatDB.get_feat(feat_id).get("effects", {}).get("hp_bonus", 0)
+	if hp_gain > 0:
+		max_hp += hp_gain
+		current_hp += hp_gain
+
+
+## Suma los bonificadores numéricos de todas las dotes que posee el personaje para "key"
+## (p.ej. "attack_bonus", "ac_bonus", "fort_bonus", "damage_bonus", "spell_dc_bonus"...).
+func feat_bonus(key: String) -> int:
+	var total := 0
+	for feat_id in feats:
+		total += FeatDB.get_feat(feat_id).get("effects", {}).get(key, 0)
+	return total
+
+
+func caster_level() -> int:
+	return ClassDB.caster_level(class_id, level)
+
+
+func is_spellcaster() -> bool:
+	return class_data().get("casts_spells", false) and caster_level() > 0
+
+
+func spells_per_day() -> int:
+	return ClassDB.spells_per_day(class_id, level)
+
+
+func spells_remaining() -> int:
+	return max(0, spells_per_day() - spells_used_today)
+
+
+func known_spells() -> Array:
+	if not is_spellcaster():
+		return []
+	return SpellDB.known_spells_for(class_id, level)
+
+
+## CD de salvación de un conjuro de nivel "spell_level" lanzado por este personaje.
+func spell_save_dc(spell_level: int) -> int:
+	var ability_mod := 0
+	match class_data().get("spellcasting_ability", ""):
+		"int": ability_mod = abilities.int_mod()
+		"wis": ability_mod = abilities.wis_mod()
+		"cha": ability_mod = abilities.cha_mod()
+	return 10 + spell_level + ability_mod + spell_save_dc_bonus() + magic_item_bonus("spell_dc_bonus")
+
+
+func spend_spell_use() -> bool:
+	if spells_remaining() <= 0:
+		return false
+	spells_used_today += 1
+	return true
+
+
+## Descanso completo: restaura PG y usos de conjuro (no distingue inconsciencia de muerte,
+## por simplicidad "retro" cualquier personaje con 0 PG puede recuperarse al descansar).
+func rest() -> void:
+	current_hp = max_hp
+	spells_used_today = 0
+	is_alive = true
 
 
 func base_attack_bonus() -> int:
@@ -64,37 +231,43 @@ func base_attack_bonus() -> int:
 func fortitude_save() -> int:
 	if has_meta("fort_override"):
 		return get_meta("fort_override")
-	return ClassDB.base_save_bonus(class_data()["fort_progression"], level) + abilities.con_mod()
+	return ClassDB.base_save_bonus(class_data()["fort_progression"], level) + abilities.con_mod() + feat_bonus("fort_bonus") + race_bonus("fort_bonus") + magic_item_bonus("fort_bonus")
 
 
 func reflex_save() -> int:
 	if has_meta("ref_override"):
 		return get_meta("ref_override")
-	return ClassDB.base_save_bonus(class_data()["ref_progression"], level) + abilities.dex_mod()
+	return ClassDB.base_save_bonus(class_data()["ref_progression"], level) + abilities.dex_mod() + feat_bonus("ref_bonus") + race_bonus("ref_bonus") + magic_item_bonus("ref_bonus")
 
 
 func will_save() -> int:
 	if has_meta("will_override"):
 		return get_meta("will_override")
-	return ClassDB.base_save_bonus(class_data()["will_progression"], level) + abilities.wis_mod()
+	return ClassDB.base_save_bonus(class_data()["will_progression"], level) + abilities.wis_mod() + feat_bonus("will_bonus") + race_bonus("will_bonus") + magic_item_bonus("will_bonus")
 
 
-## Clase de Armadura = 10 + Destreza + armadura + escudo + tamaño.
+## Clase de Armadura = 10 + Destreza + armadura + escudo + tamaño + dotes + objetos mágicos.
 func armor_class() -> int:
 	var size_mod := RaceDB.size_ac_modifier(race_data().get("size", "Medio"))
-	return 10 + abilities.dex_mod() + base_armor_bonus + shield_bonus + size_mod
+	return 10 + abilities.dex_mod() + base_armor_bonus + shield_bonus + size_mod + feat_bonus("ac_bonus") + magic_item_bonus("ac_bonus") + temp_ac_bonus
 
 
-## Bonificador de ataque cuerpo a cuerpo: BAB + FUE (+ tamaño, omitido por simplicidad retro).
+## Bonificador de ataque cuerpo a cuerpo: BAB + FUE + tamaño + dotes + objetos mágicos.
 func melee_attack_bonus() -> int:
 	if has_meta("attack_bonus_override"):
 		return get_meta("attack_bonus_override")
-	return base_attack_bonus() + abilities.str_mod()
+	var size_mod := RaceDB.size_attack_modifier(race_data().get("size", "Medio"))
+	return base_attack_bonus() + abilities.str_mod() + size_mod + feat_bonus("attack_bonus") + magic_item_bonus("attack_bonus") + temp_attack_bonus
 
 
-## Bonificador de ataque a distancia: BAB + DES.
+## Bonificador de ataque a distancia: BAB + DES + tamaño + dotes + objetos mágicos.
 func ranged_attack_bonus() -> int:
-	return base_attack_bonus() + abilities.dex_mod()
+	var size_mod := RaceDB.size_attack_modifier(race_data().get("size", "Medio"))
+	return base_attack_bonus() + abilities.dex_mod() + size_mod + feat_bonus("attack_bonus") + feat_bonus("ranged_attack_bonus") + magic_item_bonus("attack_bonus") + temp_attack_bonus
+
+
+func race_bonus(key: String) -> int:
+	return race_data().get("effects", {}).get(key, 0)
 
 
 func weapon_damage_expression() -> String:
@@ -104,11 +277,23 @@ func weapon_damage_expression() -> String:
 
 
 func melee_damage_bonus() -> int:
-	return abilities.str_mod()
+	return abilities.str_mod() + feat_bonus("damage_bonus") + magic_item_bonus("damage_bonus")
 
 
 func sneak_attack_dice() -> int:
 	return ClassDB.sneak_attack_dice(class_id, level)
+
+
+func sneak_attack_flat_bonus() -> int:
+	return feat_bonus("sneak_attack_bonus")
+
+
+func spell_save_dc_bonus() -> int:
+	return feat_bonus("spell_dc_bonus")
+
+
+func heal_bonus() -> int:
+	return feat_bonus("heal_bonus")
 
 
 func take_damage(amount: int) -> void:
@@ -146,7 +331,7 @@ static func from_dict(d: Dictionary) -> Character:
 	c.shield_bonus = d.get("shield_bonus", 0)
 	c.feats = d.get("feats", [])
 	c.skill_ranks = d.get("skill_ranks", {})
-	c.equipment = d.get("equipment", {"weapon": null, "armor": null, "shield": null})
+	c.equipment = d.get("equipment", {"weapon": null, "armor": null, "shield": null, "ring": null, "amulet": null})
 	c.inventory = Inventory.from_dict(d.get("inventory", {}))
 	c.experience = d.get("experience", 0)
 	c.is_alive = c.current_hp > 0
