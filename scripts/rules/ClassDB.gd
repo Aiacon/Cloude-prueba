@@ -179,10 +179,11 @@ static func max_spell_level(class_id: String, level: int) -> int:
 
 
 ## Sistema de conjuros simplificado: en vez de espacios independientes por nivel de
-## conjuro (regla completa del SRD), el conjurador dispone de "usos de conjuro" diarios
-## que puede gastar en cualquier conjuro conocido hasta su nivel máximo.
-static func spells_per_day(class_id: String, level: int) -> int:
+## conjuro (regla completa del SRD), el conjurador dispone de una reserva de Puntos de
+## Maná (variante "spell points" de Unearthed Arcana) que gasta según el nivel del
+## conjuro (ver SpellDB.mana_cost) en cualquier conjuro conocido hasta su nivel máximo.
+static func mana_per_day(class_id: String, level: int) -> int:
 	var cl := caster_level(class_id, level)
 	if cl <= 0:
 		return 0
-	return 3 + cl
+	return 3 * cl + 2

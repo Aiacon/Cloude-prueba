@@ -27,8 +27,8 @@ externo) y pensado para exportarse a Android en **arquitectura de 32 bits
 - **~30 dotes** con prerrequisitos, asignadas automáticamente al subir de
   nivel según la clase.
 - **Sistema de conjuros** (Clérigo/Mago/Paladín/Explorador) con conjuros de
-  nivel 0 a 9 y progresión de nivel de conjurador fiel al SRD; sistema de
-  "usos de conjuro" diarios simplificado (ver nota abajo).
+  nivel 0 a 9 y progresión de nivel de conjurador fiel al SRD; se lanzan
+  gastando **Puntos de Maná** de una reserva diaria (ver nota abajo).
 - **Equipo mágico**: armas y armaduras +1/+2/+3, anillos, objetos
   maravillosos, varitas y pergaminos.
 - **Creación de personaje** con tirada de atributos (4d6, se descarta el
@@ -49,9 +49,11 @@ externo) y pensado para exportarse a Android en **arquitectura de 32 bits
 ## Simplificaciones deliberadas (para mantener el proyecto jugable y verificable)
 
 - **Conjuros**: en vez de espacios independientes por nivel de conjuro (regla
-  completa del SRD), cada conjurador tiene un número de "usos de conjuro"
-  diarios que gasta en cualquier conjuro que conozca hasta su nivel máximo.
-  Se descansa con el botón **Descansar** (recupera PG y usos de conjuro).
+  completa del SRD), cada conjurador tiene una reserva de **Puntos de Maná**
+  (variante "spell points" de *Unearthed Arcana*) que gasta según el nivel
+  del conjuro (costo = `2×nivel-1`, mínimo 1) en cualquier conjuro que
+  conozca hasta su nivel máximo. Se descansa con el botón **Descansar**
+  (recupera PG y Puntos de Maná).
 - **Dotes/conjuros/objetos mágicos**: se implementó un conjunto amplio y
   representativo del SRD (no las ~1000+ entradas completas), sobre una
   arquitectura de datos (`FeatDB`, `SpellDB`, `MagicItemDB`) pensada para

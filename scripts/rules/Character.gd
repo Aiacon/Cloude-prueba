@@ -17,7 +17,7 @@ var equipment: Dictionary = {"weapon": null, "armor": null, "shield": null, "rin
 var inventory: Inventory = null
 var is_alive: bool = true
 var experience: int = 0
-var spells_used_today: int = 0
+var current_mana: int = 0   # Puntos de Maná actuales (se inicializan al máximo al crear el personaje)
 var temp_ac_bonus: int = 0       # bonificadores de conjuros de buff/debuff, solo duran el combate
 var temp_attack_bonus: int = 0
 
@@ -37,6 +37,7 @@ static func create_new(name: String, race_id_: String, class_id_: String, abilit
 	if race.get("bonus_feat", false):
 		c._grant_feat()
 	c._equip_starting_gear()
+	c.current_mana = c.max_mana()
 	return c
 
 
@@ -144,6 +145,7 @@ func level_up() -> void:
 	if class_id == "fighter" and ProgressionDB.grants_fighter_bonus_feat(level):
 		_grant_feat()
 
+	current_mana = max_mana()
 	EventBus.party_member_leveled_up.emit(self)
 
 
@@ -185,12 +187,8 @@ func is_spellcaster() -> bool:
 	return class_data().get("casts_spells", false) and caster_level() > 0
 
 
-func spells_per_day() -> int:
-	return ClassDB.spells_per_day(class_id, level)
-
-
-func spells_remaining() -> int:
-	return max(0, spells_per_day() - spells_used_today)
+func max_mana() -> int:
+	return ClassDB.mana_per_day(class_id, level)
 
 
 func known_spells() -> Array:
@@ -209,18 +207,19 @@ func spell_save_dc(spell_level: int) -> int:
 	return 10 + spell_level + ability_mod + spell_save_dc_bonus() + magic_item_bonus("spell_dc_bonus")
 
 
-func spend_spell_use() -> bool:
-	if spells_remaining() <= 0:
+## Gasta "cost" Puntos de Maná; devuelve false si no hay suficientes.
+func spend_mana(cost: int) -> bool:
+	if current_mana < cost:
 		return false
-	spells_used_today += 1
+	current_mana -= cost
 	return true
 
 
-## Descanso completo: restaura PG y usos de conjuro (no distingue inconsciencia de muerte,
+## Descanso completo: restaura PG y Puntos de Maná (no distingue inconsciencia de muerte,
 ## por simplicidad "retro" cualquier personaje con 0 PG puede recuperarse al descansar).
 func rest() -> void:
 	current_hp = max_hp
-	spells_used_today = 0
+	current_mana = max_mana()
 	is_alive = true
 
 
@@ -315,6 +314,7 @@ func to_dict() -> Dictionary:
 		"base_armor_bonus": base_armor_bonus, "shield_bonus": shield_bonus,
 		"feats": feats, "skill_ranks": skill_ranks, "equipment": equipment,
 		"inventory": inventory.to_dict() if inventory else {}, "experience": experience,
+		"current_mana": current_mana,
 	}
 
 
@@ -334,5 +334,6 @@ static func from_dict(d: Dictionary) -> Character:
 	c.equipment = d.get("equipment", {"weapon": null, "armor": null, "shield": null, "ring": null, "amulet": null})
 	c.inventory = Inventory.from_dict(d.get("inventory", {}))
 	c.experience = d.get("experience", 0)
+	c.current_mana = d.get("current_mana", 0)
 	c.is_alive = c.current_hp > 0
 	return c

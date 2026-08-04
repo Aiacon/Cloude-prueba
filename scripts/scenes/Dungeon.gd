@@ -207,7 +207,8 @@ func _refresh_hud() -> void:
 	room_name_label.text = dungeon_builder.room_data.get("name", "")
 	var status := ""
 	for member in GameManager.party:
-		status += "%s: %d/%d PG   " % [member.character_name, member.current_hp, member.max_hp]
+		var mana_text := (" %d/%d PM" % [member.current_mana, member.max_mana()]) if member.is_spellcaster() else ""
+		status += "%s: %d/%d PG%s   " % [member.character_name, member.current_hp, member.max_hp, mana_text]
 	party_status_label.text = status
 
 

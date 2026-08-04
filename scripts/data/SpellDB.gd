@@ -2,8 +2,9 @@ extends Node
 ## Conjuros (contenido de reglas basado en el SRD 3.5 / OGL, con temática elemental
 ## propia). Sistema simplificado: cada conjurador conoce automáticamente todos los
 ## conjuros de su clase hasta el nivel máximo que le permite su nivel de conjurador,
-## y gasta "usos de conjuro" diarios en vez de espacios independientes por nivel
-## (ver ClassDB.spells_per_day / max_spell_level).
+## y gasta Puntos de Maná (variante "spell points" de Unearthed Arcana) según el
+## nivel del conjuro, en vez de espacios independientes por nivel
+## (ver ClassDB.mana_per_day / max_spell_level / SpellDB.mana_cost).
 class_name SpellDB
 
 # effect: "damage" | "heal" | "buff_ac" | "buff_attack" | "debuff_ac"
@@ -88,3 +89,9 @@ static func known_spells_for(class_id: String, character_level: int) -> Array:
 		if spell["classes"].has(class_id) and spell["level"] <= max_level:
 			result.append(id)
 	return result
+
+
+## Costo en Puntos de Maná de un conjuro de nivel "spell_level" (variante "spell
+## points" de Unearthed Arcana: 2*nivel-1, con mínimo 1 para los trucos de nivel 0).
+static func mana_cost(spell_level: int) -> int:
+	return max(1, 2 * spell_level - 1)

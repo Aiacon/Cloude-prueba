@@ -149,7 +149,8 @@ func _refresh_hud() -> void:
 	var party_text := ""
 	for p in GameManager.party:
 		var status: String = "en pie" if p.current_hp > 0 else "caído"
-		party_text += "%s: %d/%d PG (%s)   " % [p.character_name, max(p.current_hp, 0), p.max_hp, status]
+		var mana_text := (" %d/%d PM" % [p.current_mana, p.max_mana()]) if p.is_spellcaster() else ""
+		party_text += "%s: %d/%d PG%s (%s)   " % [p.character_name, max(p.current_hp, 0), p.max_hp, mana_text, status]
 	party_status_label.text = party_text
 
 
@@ -199,7 +200,7 @@ func _process_turn() -> void:
 	else:
 		current_actor = combatant
 		_log("Turno de %s." % combatant.character_name)
-		spell_action_btn.visible = combatant.is_spellcaster() and combatant.spells_remaining() > 0
+		spell_action_btn.visible = combatant.is_spellcaster() and combatant.current_mana > 0
 		action_panel.visible = true
 
 
@@ -284,13 +285,18 @@ func _on_item_pressed() -> void:
 func _on_spell_menu_pressed() -> void:
 	action_panel.visible = false
 	spell_scroll.visible = true
+	var mana_lbl := Label.new()
+	mana_lbl.text = "Maná: %d/%d" % [current_actor.current_mana, current_actor.max_mana()]
+	spell_panel.add_child(mana_lbl)
 	for spell_id in current_actor.known_spells():
 		var spell := SpellDB.get_spell(spell_id)
+		var cost := SpellDB.mana_cost(spell["level"])
 		var btn := Button.new()
-		btn.text = "Nv%d %s" % [spell["level"], spell["name"]]
+		btn.text = "Nv%d %s (%d PM)" % [spell["level"], spell["name"], cost]
+		btn.disabled = current_actor.current_mana < cost
 		btn.pressed.connect(func(): _on_spell_selected(spell_id))
 		spell_panel.add_child(btn)
-	if spell_panel.get_child_count() == 0:
+	if current_actor.known_spells().is_empty():
 		var lbl := Label.new()
 		lbl.text = "No conoces conjuros todavía."
 		spell_panel.add_child(lbl)
@@ -326,12 +332,13 @@ func _on_spell_selected(spell_id: String) -> void:
 
 
 func _cast_spell(spell_id: String, targets: Array) -> void:
-	if not current_actor.spend_spell_use():
-		_log("%s ya no tiene usos de conjuro disponibles hoy." % current_actor.character_name)
-		return
 	var spell := SpellDB.get_spell(spell_id)
+	var cost := SpellDB.mana_cost(spell["level"])
+	if not current_actor.spend_mana(cost):
+		_log("%s no tiene suficientes Puntos de Maná (%d PM)." % [current_actor.character_name, cost])
+		return
 	var dc := current_actor.spell_save_dc(spell["level"])
-	_log("%s lanza %s." % [current_actor.character_name, spell["name"]])
+	_log("%s lanza %s (%d PM)." % [current_actor.character_name, spell["name"], cost])
 
 	for target in targets:
 		match spell["effect"]:
