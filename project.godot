@@ -1,0 +1,45 @@
+; Templo Elemental - proyecto Godot 4.3
+; RPG por turnos estilo D&D 3.5 (reglas basadas en el SRD/OGL), estética retro 2D.
+; Uso personal / no comercial.
+
+config_version=5
+
+[application]
+
+config/name="Templo Elemental"
+config/description="RPG retro por turnos inspirado en D&D 3.5 - proyecto personal, no comercial."
+run/main_scene="res://scenes/MainMenu.tscn"
+config/features=PackedStringArray("4.3", "Mobile")
+config/icon="res://icon.svg"
+boot_splash/show_image=false
+
+[autoload]
+
+GameManager="*res://autoload/GameManager.gd"
+EventBus="*res://autoload/EventBus.gd"
+
+[display]
+
+window/size/viewport_width=384
+window/size/viewport_height=216
+window/stretch/mode="viewport"
+window/stretch/aspect="keep"
+window/handheld/orientation="landscape"
+window/energy_saving/keep_screen_on=true
+
+[input_devices]
+
+pointing/emulate_touch_from_mouse=true
+
+[rendering]
+
+renderer/rendering_method="mobile"
+renderer/rendering_method.mobile="mobile"
+textures/canvas_textures/default_texture_filter=0
+textures/vram_compression/import_etc2_astc=true
+2d/snap/snap_2d_transforms_to_pixel=true
+2d/snap/snap_2d_vertices_to_pixel=true
+
+[physics]
+
+common/physics_ticks_per_second=30
