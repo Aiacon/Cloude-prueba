@@ -1,0 +1,16 @@
+# Godot 4 - archivos generados/locales
+.godot/
+.import/
+*.import
+*.uid
+export.cfg
+export_credentials.cfg
+*.translation
+
+# Compilaciones
+builds/
+*.apk
+*.aab
+
+# Sistema
+.DS_Store
