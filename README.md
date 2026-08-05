@@ -92,13 +92,23 @@ export_presets.cfg       Preset de exportación Android (32-bit / armeabi-v7a)
 
 ## Cómo exportar el APK (32-bit) a Android
 
-1. En Godot: *Editor → Editor Settings → Export → Android* y configura la
-   ruta del Android SDK (o usa el gestor de plantillas integrado).
-2. Instala las **plantillas de exportación** de Godot correspondientes a tu
+El preset usa exportación "rápida" (`gradle_build/use_gradle_build=false`):
+no hace falta un proyecto Gradle/Android Studio completo, pero **sigue
+haciendo falta un Android SDK local** (Godot usa `apksigner`/`zipalign` de
+las *build-tools* para firmar y alinear el APK).
+
+1. Instala un Android SDK: la forma más simple es instalar **Android Studio**
+   (trae el SDK Manager con todo lo necesario), o si solo quieres las
+   herramientas de línea de comandos, descarga las *command line tools* desde
+   https://developer.android.com/studio#command-tools e instala al menos
+   `platform-tools` y `build-tools` con `sdkmanager`.
+2. En Godot: *Editor → Editor Settings → Export → Android* y apunta **Android
+   SDK Path** a esa instalación.
+3. Instala las **plantillas de exportación** de Godot correspondientes a tu
    versión (*Editor → Manage Export Templates*).
-3. *Project → Export...* → se detectará el preset **"Android (32-bit)"**
+4. *Project → Export...* → se detectará el preset **"Android (32-bit)"**
    incluido en `export_presets.cfg` (arquitectura `armeabi-v7a` únicamente,
-   sin `arm64-v8a`, para mantener ese perfil "retro").
+   sin `arm64-v8a`, para mantener ese perfil "retro") → **Export Project**.
 4. Genera/asigna un *keystore* de depuración o de publicación y pulsa
    **Export Project**.
 
