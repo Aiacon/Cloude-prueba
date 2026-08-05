@@ -1,6 +1,6 @@
 extends Node
 ## Base de datos de clases jugables (reglas SRD 3.5 / OGL, simplificadas para un RPG retro).
-class_name ClassDB
+class_name CharClassDB
 
 # progression: "good" | "average" | "poor" para BAB y salvaciones.
 const CLASSES := {
@@ -120,7 +120,7 @@ const CLASSES := {
 }
 
 
-static func get_class(id: String) -> Dictionary:
+static func get_class_data(id: String) -> Dictionary:
 	return CLASSES.get(id, CLASSES["fighter"])
 
 
@@ -146,19 +146,19 @@ static func base_save_bonus(progression: String, level: int) -> int:
 
 
 static func sneak_attack_dice(class_id: String, level: int) -> int:
-	var data := get_class(class_id)
+	var data := get_class_data(class_id)
 	if not data.get("sneak_attack_dice", false):
 		return 0
 	return int(ceil(level / 2.0))
 
 
 static func primary_ability(class_id: String) -> String:
-	return get_class(class_id).get("primary_ability", "str")
+	return get_class_data(class_id).get("primary_ability", "str")
 
 
 ## Nivel de conjurador efectivo (0 si aún no puede lanzar conjuros a este nivel de personaje).
 static func caster_level(class_id: String, level: int) -> int:
-	var data := get_class(class_id)
+	var data := get_class_data(class_id)
 	if not data.get("casts_spells", false):
 		return 0
 	var start: int = data.get("spell_start_level", 1)
@@ -174,7 +174,7 @@ static func max_spell_level(class_id: String, level: int) -> int:
 	if cl <= 0:
 		return -1
 	var formula_level: int = int((cl + 1) / 2.0)
-	var cap: int = get_class(class_id).get("max_spell_level_cap", 0)
+	var cap: int = get_class_data(class_id).get("max_spell_level_cap", 0)
 	return min(formula_level, cap)
 
 

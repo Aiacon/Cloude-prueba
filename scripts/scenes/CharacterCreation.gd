@@ -50,8 +50,8 @@ func _ready() -> void:
 	layout.add_child(race_option)
 
 	class_option = OptionButton.new()
-	for class_id in ClassDB.ids():
-		class_option.add_item(ClassDB.get_class(class_id)["name"])
+	for class_id in CharClassDB.ids():
+		class_option.add_item(CharClassDB.get_class_data(class_id)["name"])
 	layout.add_child(class_option)
 
 	var party_size_label := Label.new()
@@ -94,7 +94,7 @@ func _on_roll_pressed() -> void:
 
 func _on_start_pressed() -> void:
 	var race_id: String = RaceDB.ids()[race_option.selected]
-	var class_id: String = ClassDB.ids()[class_option.selected]
+	var class_id: String = CharClassDB.ids()[class_option.selected]
 	var hero_name: String = name_edit.text.strip_edges()
 	if hero_name == "":
 		hero_name = "Aventurero"

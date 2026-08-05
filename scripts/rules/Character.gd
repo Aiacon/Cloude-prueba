@@ -115,7 +115,7 @@ func magic_item_bonus(key: String) -> int:
 
 
 func class_data() -> Dictionary:
-	return ClassDB.get_class(class_id)
+	return CharClassDB.get_class_data(class_id)
 
 
 func race_data() -> Dictionary:
@@ -150,7 +150,7 @@ func level_up() -> void:
 
 
 func _apply_ability_increase() -> void:
-	match ClassDB.primary_ability(class_id):
+	match CharClassDB.primary_ability(class_id):
 		"str": abilities.strength += 1
 		"dex": abilities.dexterity += 1
 		"con": abilities.constitution += 1
@@ -180,7 +180,7 @@ func feat_bonus(key: String) -> int:
 
 
 func caster_level() -> int:
-	return ClassDB.caster_level(class_id, level)
+	return CharClassDB.caster_level(class_id, level)
 
 
 func is_spellcaster() -> bool:
@@ -188,7 +188,7 @@ func is_spellcaster() -> bool:
 
 
 func max_mana() -> int:
-	return ClassDB.mana_per_day(class_id, level)
+	return CharClassDB.mana_per_day(class_id, level)
 
 
 func known_spells() -> Array:
@@ -224,25 +224,25 @@ func rest() -> void:
 
 
 func base_attack_bonus() -> int:
-	return ClassDB.base_attack_bonus(class_data()["bab_progression"], level)
+	return CharClassDB.base_attack_bonus(class_data()["bab_progression"], level)
 
 
 func fortitude_save() -> int:
 	if has_meta("fort_override"):
 		return get_meta("fort_override")
-	return ClassDB.base_save_bonus(class_data()["fort_progression"], level) + abilities.con_mod() + feat_bonus("fort_bonus") + race_bonus("fort_bonus") + magic_item_bonus("fort_bonus")
+	return CharClassDB.base_save_bonus(class_data()["fort_progression"], level) + abilities.con_mod() + feat_bonus("fort_bonus") + race_bonus("fort_bonus") + magic_item_bonus("fort_bonus")
 
 
 func reflex_save() -> int:
 	if has_meta("ref_override"):
 		return get_meta("ref_override")
-	return ClassDB.base_save_bonus(class_data()["ref_progression"], level) + abilities.dex_mod() + feat_bonus("ref_bonus") + race_bonus("ref_bonus") + magic_item_bonus("ref_bonus")
+	return CharClassDB.base_save_bonus(class_data()["ref_progression"], level) + abilities.dex_mod() + feat_bonus("ref_bonus") + race_bonus("ref_bonus") + magic_item_bonus("ref_bonus")
 
 
 func will_save() -> int:
 	if has_meta("will_override"):
 		return get_meta("will_override")
-	return ClassDB.base_save_bonus(class_data()["will_progression"], level) + abilities.wis_mod() + feat_bonus("will_bonus") + race_bonus("will_bonus") + magic_item_bonus("will_bonus")
+	return CharClassDB.base_save_bonus(class_data()["will_progression"], level) + abilities.wis_mod() + feat_bonus("will_bonus") + race_bonus("will_bonus") + magic_item_bonus("will_bonus")
 
 
 ## Clase de Armadura = 10 + Destreza + armadura + escudo + tamaño + dotes + objetos mágicos.
@@ -280,7 +280,7 @@ func melee_damage_bonus() -> int:
 
 
 func sneak_attack_dice() -> int:
-	return ClassDB.sneak_attack_dice(class_id, level)
+	return CharClassDB.sneak_attack_dice(class_id, level)
 
 
 func sneak_attack_flat_bonus() -> int:

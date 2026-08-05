@@ -4,7 +4,7 @@ extends Node
 ## conjuros de su clase hasta el nivel máximo que le permite su nivel de conjurador,
 ## y gasta Puntos de Maná (variante "spell points" de Unearthed Arcana) según el
 ## nivel del conjuro, en vez de espacios independientes por nivel
-## (ver ClassDB.mana_per_day / max_spell_level / SpellDB.mana_cost).
+## (ver CharClassDB.mana_per_day / max_spell_level / SpellDB.mana_cost).
 class_name SpellDB
 
 # effect: "damage" | "heal" | "buff_ac" | "buff_attack" | "debuff_ac"
@@ -80,7 +80,7 @@ static func get_spell(id: String) -> Dictionary:
 
 ## Conjuros que "class_id" conoce automáticamente hasta el nivel de personaje dado.
 static func known_spells_for(class_id: String, character_level: int) -> Array:
-	var max_level := ClassDB.max_spell_level(class_id, character_level)
+	var max_level := CharClassDB.max_spell_level(class_id, character_level)
 	if max_level < 0:
 		return []
 	var result: Array = []
