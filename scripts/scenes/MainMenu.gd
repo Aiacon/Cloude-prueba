@@ -9,6 +9,8 @@ func _ready() -> void:
 
 	var layout := VBoxContainer.new()
 	layout.set_anchors_preset(Control.PRESET_CENTER)
+	layout.grow_horizontal = Control.GROW_DIRECTION_BOTH
+	layout.grow_vertical = Control.GROW_DIRECTION_BOTH
 	layout.custom_minimum_size = Vector2(220, 0)
 	layout.add_theme_constant_override("separation", 12)
 	add_child(layout)
