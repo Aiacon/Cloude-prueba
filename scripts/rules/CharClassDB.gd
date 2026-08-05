@@ -21,6 +21,7 @@ const CLASSES := {
 		"starting_weapon": "espada_larga",
 		"starting_armor": "cota_escamas",
 		"starting_shield": "escudo_grande",
+		"visual": {"outfit": Color(0.55, 0.16, 0.16), "accessory": "sword", "hood": false},
 	},
 	"cleric": {
 		"name": "Clérigo",
@@ -40,6 +41,7 @@ const CLASSES := {
 		"starting_weapon": "mazo_pesado",
 		"starting_armor": "cota_cuero",
 		"starting_shield": "escudo_pequeno",
+		"visual": {"outfit": Color(0.9, 0.87, 0.78), "accessory": "holy_symbol", "hood": false},
 	},
 	"wizard": {
 		"name": "Mago",
@@ -59,6 +61,7 @@ const CLASSES := {
 		"starting_weapon": "baston",
 		"starting_armor": "",
 		"starting_shield": "",
+		"visual": {"outfit": Color(0.18, 0.28, 0.6), "accessory": "staff", "hood": false},
 	},
 	"rogue": {
 		"name": "Pícaro",
@@ -78,6 +81,7 @@ const CLASSES := {
 		"starting_weapon": "daga",
 		"starting_armor": "cota_cuero",
 		"starting_shield": "",
+		"visual": {"outfit": Color(0.15, 0.15, 0.18), "accessory": "dagger", "hood": true},
 	},
 	"ranger": {
 		"name": "Explorador",
@@ -97,6 +101,7 @@ const CLASSES := {
 		"starting_weapon": "arco_corto",
 		"starting_armor": "cota_cuero",
 		"starting_shield": "",
+		"visual": {"outfit": Color(0.16, 0.42, 0.2), "accessory": "bow", "hood": false},
 	},
 	"paladin": {
 		"name": "Paladín",
@@ -116,6 +121,7 @@ const CLASSES := {
 		"starting_weapon": "espada_larga",
 		"starting_armor": "cota_mallas",
 		"starting_shield": "escudo_grande",
+		"visual": {"outfit": Color(0.85, 0.78, 0.5), "accessory": "shield", "hood": false},
 	},
 }
 

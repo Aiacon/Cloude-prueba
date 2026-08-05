@@ -18,14 +18,21 @@ const MAX_LOG_LINES := 9
 var log_label: RichTextLabel
 var enemy_status_label: Label
 var party_status_label: Label
-var action_panel: VBoxContainer
+var action_panel: HBoxContainer
 var target_panel: VBoxContainer
+var target_scroll: ScrollContainer
 var spell_panel: VBoxContainer
 var spell_scroll: ScrollContainer
 var end_panel: VBoxContainer
 var end_label: Label
 
 var spell_action_btn: Button
+
+var battle_scene: Node2D
+var enemy_sprites: Array = []
+var party_sprites: Array = []
+
+const BATTLE_SCENE_HEIGHT := 60.0
 
 
 func _ready() -> void:
@@ -65,49 +72,62 @@ func _build_ui() -> void:
 	var ui := CanvasLayer.new()
 	add_child(ui)
 
+	_build_battle_scene(ui)
+
 	enemy_status_label = Label.new()
-	enemy_status_label.position = Vector2(8, 4)
+	enemy_status_label.position = Vector2(8, BATTLE_SCENE_HEIGHT + 2)
+	enemy_status_label.add_theme_font_size_override("font_size", 11)
 	enemy_status_label.autowrap_mode = TextServer.AUTOWRAP_WORD
-	enemy_status_label.custom_minimum_size = Vector2(368, 0)
+	enemy_status_label.custom_minimum_size = Vector2(368, 26)
 	ui.add_child(enemy_status_label)
 
 	party_status_label = Label.new()
-	party_status_label.position = Vector2(8, 44)
+	party_status_label.position = Vector2(8, BATTLE_SCENE_HEIGHT + 30)
+	party_status_label.add_theme_font_size_override("font_size", 11)
 	party_status_label.autowrap_mode = TextServer.AUTOWRAP_WORD
-	party_status_label.custom_minimum_size = Vector2(368, 0)
+	party_status_label.custom_minimum_size = Vector2(368, 26)
 	ui.add_child(party_status_label)
 
 	log_label = RichTextLabel.new()
-	log_label.position = Vector2(8, 84)
-	log_label.size = Vector2(368, 66)
+	log_label.position = Vector2(8, BATTLE_SCENE_HEIGHT + 58)
+	log_label.size = Vector2(368, 62)
+	log_label.add_theme_font_size_override("normal_font_size", 11)
 	log_label.bbcode_enabled = false
 	log_label.scroll_active = false
 	ui.add_child(log_label)
 
-	action_panel = VBoxContainer.new()
-	action_panel.position = Vector2(8, 160)
+	action_panel = HBoxContainer.new()
+	action_panel.position = Vector2(8, 192)
+	action_panel.add_theme_constant_override("separation", 4)
 	ui.add_child(action_panel)
 	_build_action_buttons()
 
+	target_scroll = ScrollContainer.new()
+	target_scroll.position = Vector2(8, 192)
+	target_scroll.custom_minimum_size = Vector2(368, 22)
+	target_scroll.visible = false
+	ui.add_child(target_scroll)
 	target_panel = VBoxContainer.new()
-	target_panel.position = Vector2(120, 160)
-	ui.add_child(target_panel)
+	target_panel.custom_minimum_size = Vector2(368, 0)
+	target_scroll.add_child(target_panel)
 
 	spell_scroll = ScrollContainer.new()
-	spell_scroll.position = Vector2(120, 160)
-	spell_scroll.custom_minimum_size = Vector2(210, 52)
+	spell_scroll.position = Vector2(8, 192)
+	spell_scroll.custom_minimum_size = Vector2(368, 22)
 	spell_scroll.visible = false
 	ui.add_child(spell_scroll)
 	spell_panel = VBoxContainer.new()
+	spell_panel.custom_minimum_size = Vector2(368, 0)
 	spell_scroll.add_child(spell_panel)
 
 	end_panel = VBoxContainer.new()
-	end_panel.position = Vector2(90, 160)
+	end_panel.position = Vector2(60, BATTLE_SCENE_HEIGHT + 56)
 	end_panel.visible = false
 	ui.add_child(end_panel)
 	end_label = Label.new()
+	end_label.add_theme_font_size_override("font_size", 12)
 	end_label.autowrap_mode = TextServer.AUTOWRAP_WORD
-	end_label.custom_minimum_size = Vector2(220, 0)
+	end_label.custom_minimum_size = Vector2(260, 0)
 	end_panel.add_child(end_label)
 	var continue_btn := Button.new()
 	continue_btn.text = "Continuar"
@@ -115,6 +135,50 @@ func _build_ui() -> void:
 	end_panel.add_child(continue_btn)
 
 	_refresh_hud()
+
+
+## Fondo de la escena (tinte según el elemento de la sala) y las siluetas de
+## cada combatiente: enemigos arriba-derecha, grupo abajo-izquierda (estilo
+## pantalla de batalla clásica de JRPG).
+func _build_battle_scene(ui: CanvasLayer) -> void:
+	battle_scene = Node2D.new()
+	ui.add_child(battle_scene)
+
+	var element: String = LevelData.get_room(encounter_room_id).get("element", "ninguno")
+	var sky_color: Color = DungeonBuilder.ELEMENT_TINTS.get(element, Color(0.2, 0.19, 0.24)).lightened(0.08)
+	var ground_color: Color = DungeonBuilder.ELEMENT_TINTS.get(element, Color(0.2, 0.19, 0.24)).darkened(0.25)
+
+	var sky := ColorRect.new()
+	sky.size = Vector2(384, BATTLE_SCENE_HEIGHT * 0.6)
+	sky.color = sky_color
+	battle_scene.add_child(sky)
+
+	var ground := ColorRect.new()
+	ground.position = Vector2(0, BATTLE_SCENE_HEIGHT * 0.6)
+	ground.size = Vector2(384, BATTLE_SCENE_HEIGHT * 0.4)
+	ground.color = ground_color
+	battle_scene.add_child(ground)
+
+	enemy_sprites.clear()
+	var enemy_spacing: float = min(56.0, 300.0 / max(1, enemies.size()))
+	for i in range(enemies.size()):
+		var visual := CreatureVisual.new()
+		visual.position = Vector2(210 + i * enemy_spacing, BATTLE_SCENE_HEIGHT * 0.62)
+		visual.scale = Vector2(1.9, 1.9)
+		visual.configure(CreatureVisual.profile_for_monster(enemies[i].get_meta("monster_id", "")))
+		battle_scene.add_child(visual)
+		enemy_sprites.append(visual)
+
+	party_sprites.clear()
+	var party_spacing: float = min(34.0, 220.0 / max(1, GameManager.party.size()))
+	for i in range(GameManager.party.size()):
+		var member: Character = GameManager.party[i]
+		var visual := CreatureVisual.new()
+		visual.position = Vector2(24 + i * party_spacing, BATTLE_SCENE_HEIGHT - 4.0)
+		visual.scale = Vector2(1.5, 1.5)
+		visual.configure(CreatureVisual.profile_for_character(member))
+		battle_scene.add_child(visual)
+		party_sprites.append(visual)
 
 
 func _build_action_buttons() -> void:
@@ -141,16 +205,22 @@ func _build_action_buttons() -> void:
 
 func _refresh_hud() -> void:
 	var enemy_text := ""
-	for e in enemies:
+	for i in range(enemies.size()):
+		var e: Character = enemies[i]
 		var status: String = "en pie" if e.current_hp > 0 else "derrotado"
 		enemy_text += "%s: %d/%d PG (%s)   " % [e.character_name, max(e.current_hp, 0), e.max_hp, status]
+		if i < enemy_sprites.size():
+			enemy_sprites[i].modulate.a = 1.0 if e.current_hp > 0 else 0.3
 	enemy_status_label.text = enemy_text
 
 	var party_text := ""
-	for p in GameManager.party:
+	for i in range(GameManager.party.size()):
+		var p: Character = GameManager.party[i]
 		var status: String = "en pie" if p.current_hp > 0 else "caído"
 		var mana_text := (" %d/%d PM" % [p.current_mana, p.max_mana()]) if p.is_spellcaster() else ""
 		party_text += "%s: %d/%d PG%s (%s)   " % [p.character_name, max(p.current_hp, 0), p.max_hp, mana_text, status]
+		if i < party_sprites.size():
+			party_sprites[i].modulate.a = 1.0 if p.current_hp > 0 else 0.3
 	party_status_label.text = party_text
 
 
@@ -188,7 +258,7 @@ func _process_turn() -> void:
 		return
 
 	action_panel.visible = false
-	target_panel.visible = false
+	target_scroll.visible = false
 	spell_scroll.visible = false
 	for child in target_panel.get_children():
 		child.queue_free()
@@ -234,7 +304,7 @@ func _enemy_attack(attacker) -> void:
 
 func _on_attack_pressed() -> void:
 	action_panel.visible = false
-	target_panel.visible = true
+	target_scroll.visible = true
 	for e in enemies:
 		if e.current_hp <= 0:
 			continue
@@ -263,7 +333,7 @@ func _on_target_selected(target) -> void:
 	else:
 		_log("  Falla el ataque.")
 	_refresh_hud()
-	target_panel.visible = false
+	target_scroll.visible = false
 	_end_turn()
 
 
@@ -310,7 +380,7 @@ func _on_spell_selected(spell_id: String) -> void:
 		"self":
 			_cast_spell(spell_id, [current_actor])
 		"ally":
-			target_panel.visible = true
+			target_scroll.visible = true
 			for p in GameManager.party:
 				if p.current_hp <= 0:
 					continue
@@ -319,7 +389,7 @@ func _on_spell_selected(spell_id: String) -> void:
 				btn.pressed.connect(func(): _cast_spell(spell_id, [p]))
 				target_panel.add_child(btn)
 		"enemy":
-			target_panel.visible = true
+			target_scroll.visible = true
 			for e in enemies:
 				if e.current_hp <= 0:
 					continue
@@ -361,7 +431,7 @@ func _cast_spell(spell_id: String, targets: Array) -> void:
 				target.temp_ac_bonus -= penalty
 				_log("  %s sufre -%d a la CA." % [target.character_name, penalty])
 
-	target_panel.visible = false
+	target_scroll.visible = false
 	_refresh_hud()
 	_end_turn()
 
@@ -407,7 +477,7 @@ func _flee_combat() -> void:
 
 func _victory() -> void:
 	action_panel.visible = false
-	target_panel.visible = false
+	target_scroll.visible = false
 	spell_scroll.visible = false
 
 	var total_xp := 0
@@ -456,7 +526,7 @@ func _victory() -> void:
 
 func _defeat() -> void:
 	action_panel.visible = false
-	target_panel.visible = false
+	target_scroll.visible = false
 	spell_scroll.visible = false
 	end_label.text = "El grupo ha caído en el Templo Elemental...\nCarga tu última partida guardada para continuar."
 	end_panel.visible = true

@@ -9,9 +9,9 @@ const COLOR_WALL := Color(0.12, 0.12, 0.16)
 const COLOR_FLOOR := Color(0.24, 0.22, 0.2)
 const COLOR_DOOR := Color(0.55, 0.42, 0.2)
 const COLOR_PORTAL := Color(0.75, 0.2, 0.85)
-const COLOR_ENCOUNTER := Color(0.7, 0.15, 0.15)
+const COLOR_ENCOUNTER := Color(0.35, 0.08, 0.08)
 const COLOR_PICKUP := Color(0.95, 0.85, 0.2)
-const COLOR_NPC := Color(0.3, 0.75, 0.9)
+const COLOR_NPC_BG := Color(0.16, 0.22, 0.26)
 
 const ELEMENT_TINTS := {
 	"fuego": Color(0.35, 0.12, 0.08),
@@ -76,6 +76,16 @@ func _place_tile(pos: Vector2i, color: Color) -> void:
 	tiles_container.add_child(rect)
 
 
+## Coloca una silueta (CreatureVisual) sobre una casilla de fondo "bg_color".
+func _place_creature(pos: Vector2i, profile: Dictionary, bg_color: Color) -> void:
+	_place_tile(pos, bg_color)
+	var visual := CreatureVisual.new()
+	visual.position = Vector2(pos.x * TILE_SIZE + TILE_SIZE / 2.0, pos.y * TILE_SIZE + TILE_SIZE - 1.0)
+	visual.scale = Vector2(0.85, 0.85)
+	visual.configure(profile)
+	tiles_container.add_child(visual)
+
+
 func _build_grid() -> void:
 	var width: int = room_data["width"]
 	var height: int = room_data["height"]
@@ -121,7 +131,8 @@ func _build_encounters() -> void:
 		if GameManager.cleared_encounters.get(key, false):
 			continue
 		var pos := _dict_to_v2i(enc["pos"])
-		_place_tile(pos, COLOR_ENCOUNTER)
+		var lead_monster: String = enc["monsters"][0]
+		_place_creature(pos, CreatureVisual.profile_for_monster(lead_monster), COLOR_ENCOUNTER)
 		encounters_by_pos[pos] = enc
 
 
@@ -145,7 +156,7 @@ func _build_pickups() -> void:
 func _build_npcs() -> void:
 	for npc in NpcDB.npcs_in_room(room_id):
 		var pos: Vector2i = npc["pos"]
-		_place_tile(pos, COLOR_NPC)
+		_place_creature(pos, CreatureVisual.profile_for_npc(npc["id"]), COLOR_NPC_BG)
 		walkable.erase(pos)
 		npcs_by_pos[pos] = npc
 

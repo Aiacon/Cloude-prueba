@@ -16,15 +16,22 @@ var target_pixel: Vector2 = Vector2.ZERO
 var pending_direction: Vector2i = Vector2i.ZERO
 var input_locked: bool = false   # true mientras hay un diálogo abierto
 
-var visual: ColorRect
+var visual: CreatureVisual
 
 
 func _ready() -> void:
-	visual = ColorRect.new()
-	visual.size = Vector2(TILE_SIZE - 4, TILE_SIZE - 4)
-	visual.position = Vector2(2, 2)
-	visual.color = Color(0.9, 0.9, 0.95)
+	visual = CreatureVisual.new()
+	visual.position = Vector2(TILE_SIZE / 2.0, TILE_SIZE - 1.0)
+	visual.scale = Vector2(0.85, 0.85)
 	add_child(visual)
+	refresh_visual()
+
+
+## Actualiza la silueta para reflejar al líder actual del grupo (raza + clase).
+func refresh_visual() -> void:
+	if GameManager.party.is_empty():
+		return
+	visual.configure(CreatureVisual.profile_for_character(GameManager.party[0]))
 
 
 func place_at(pos: Vector2i) -> void:

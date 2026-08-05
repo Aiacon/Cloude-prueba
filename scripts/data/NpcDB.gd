@@ -9,6 +9,7 @@ const NPCS := {
 		"pos": {"x": 7, "y": 3},
 		"quest_id": "ecos_del_templo",
 		"idle_lines": ["El pueblo confía en ustedes.", "Regresen con vida, por favor."],
+		"visual": {"skin": Color(0.85, 0.68, 0.55), "outfit": Color(0.32, 0.24, 0.5), "accessory": "none", "hood": false},
 	},
 	"anciana_mistica": {
 		"name": "Anciana Yolotl",
@@ -16,6 +17,7 @@ const NPCS := {
 		"pos": {"x": 4, "y": 5},
 		"quest_id": "el_amuleto_perdido",
 		"idle_lines": ["El agua recuerda todo lo que toca...", "Cuida ese amuleto cuando lo encuentres."],
+		"visual": {"skin": Color(0.8, 0.62, 0.5), "outfit": Color(0.15, 0.45, 0.48), "accessory": "staff", "hood": true},
 	},
 	"hermano_ismael": {
 		"name": "Hermano Ismael",
@@ -23,6 +25,7 @@ const NPCS := {
 		"pos": {"x": 5, "y": 5},
 		"quest_id": "",  # se resuelve dinámicamente: siempre ofrece la siguiente misión de la cadena principal
 		"idle_lines": ["Los cuatro elementos deben ser purificados en orden.", "Que tu fe te proteja allá dentro."],
+		"visual": {"skin": Color(0.87, 0.7, 0.56), "outfit": Color(0.87, 0.85, 0.78), "accessory": "holy_symbol", "hood": false},
 	},
 }
 

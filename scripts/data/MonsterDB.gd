@@ -20,6 +20,7 @@ const MONSTERS := {
 			{"item_id": "daga", "source": "mundane", "chance": 0.25},
 			{"item_id": "pocion_curacion_leve", "source": "mundane", "chance": 0.2},
 		],
+		"visual": {"shape": "humanoid", "primary": Color(0.55, 0.42, 0.36), "accent": Color(0.75, 0.22, 0.12), "accessory": "dagger", "hood": true},
 	},
 	"guardian_agua": {
 		"name": "Guardián de las Mareas",
@@ -35,6 +36,7 @@ const MONSTERS := {
 			{"item_id": "cota_cuero", "source": "mundane", "chance": 0.2},
 			{"item_id": "pocion_curacion_leve", "source": "mundane", "chance": 0.25},
 		],
+		"visual": {"shape": "humanoid", "primary": Color(0.6, 0.68, 0.7), "accent": Color(0.15, 0.35, 0.55), "accessory": "trident", "hood": false},
 	},
 	"acolito_aire": {
 		"name": "Acólito del Vendaval",
@@ -50,6 +52,7 @@ const MONSTERS := {
 			{"item_id": "arco_corto", "source": "mundane", "chance": 0.15},
 			{"item_id": "pocion_curacion_leve", "source": "mundane", "chance": 0.2},
 		],
+		"visual": {"shape": "humanoid", "primary": Color(0.75, 0.78, 0.72), "accent": Color(0.55, 0.68, 0.62), "accessory": "bow", "hood": true},
 	},
 	"centinela_tierra": {
 		"name": "Centinela de Granito",
@@ -65,6 +68,7 @@ const MONSTERS := {
 			{"item_id": "escudo_grande", "source": "mundane", "chance": 0.2},
 			{"item_id": "anillo_resistencia_1", "source": "magic", "chance": 0.05},
 		],
+		"visual": {"shape": "golem", "primary": Color(0.42, 0.38, 0.32), "accent": Color(0.75, 0.6, 0.25), "height": 1.15, "width": 1.2},
 	},
 	"elemental_fuego_menor": {
 		"name": "Elemental de Fuego Menor",
@@ -80,6 +84,7 @@ const MONSTERS := {
 		"loot_table": [
 			{"item_id": "pergamino_bola_de_fuego", "source": "magic", "chance": 0.1},
 		],
+		"visual": {"shape": "flame", "primary": Color(1.0, 0.65, 0.15), "accent": Color(0.75, 0.15, 0.05)},
 	},
 	"elemental_agua_menor": {
 		"name": "Elemental de Agua Menor",
@@ -94,6 +99,7 @@ const MONSTERS := {
 		"loot_table": [
 			{"item_id": "pergamino_curacion", "source": "magic", "chance": 0.1},
 		],
+		"visual": {"shape": "droplet", "primary": Color(0.2, 0.5, 0.85), "accent": Color(0.7, 0.87, 1.0)},
 	},
 	"elemental_aire_menor": {
 		"name": "Elemental de Aire Menor",
@@ -108,6 +114,7 @@ const MONSTERS := {
 		"loot_table": [
 			{"item_id": "anillo_proteccion_1", "source": "magic", "chance": 0.05},
 		],
+		"visual": {"shape": "swirl", "primary": Color(0.75, 0.95, 0.92)},
 	},
 	"elemental_tierra_menor": {
 		"name": "Elemental de Tierra Menor",
@@ -122,6 +129,7 @@ const MONSTERS := {
 		"loot_table": [
 			{"item_id": "amuleto_de_la_vitalidad", "source": "magic", "chance": 0.05},
 		],
+		"visual": {"shape": "rock", "primary": Color(0.5, 0.42, 0.32), "accent": Color(0.32, 0.55, 0.3)},
 	},
 	"sumo_sacerdote_elemental": {
 		"name": "Sumo Sacerdote del Nexo Elemental",
@@ -139,6 +147,7 @@ const MONSTERS := {
 			{"item_id": "espada_larga_mas_3_llameante", "source": "magic", "chance": 1.0},
 			{"item_id": "tocado_del_sabio", "source": "magic", "chance": 0.5},
 		],
+		"visual": {"shape": "humanoid", "primary": Color(0.65, 0.55, 0.6), "accent": Color(0.35, 0.12, 0.42), "accessory": "staff", "hood": true, "halo": true, "height": 1.2, "width": 1.1},
 	},
 }
 
