@@ -7,7 +7,7 @@ var party_alive: Array = []
 var enemies: Array = []
 var initiative_order: Array = []
 var turn_index: int = 0
-var current_actor = null
+var current_actor: Character = null
 var encounter_room_id: String = ""
 var encounter_id: String = ""
 var return_pos: Vector2i
